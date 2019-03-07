@@ -33,18 +33,42 @@ class Transferer extends Thread {
 		try {
 			while(true) {
 				if(k == 0) System.out.println("ID: " + id + " - Vivo!");
-				i = r.nextInt(10);
-				j = r.nextInt(10);
+				i = r.nextInt(5) + 1;
+				j = r.nextInt(5) + 1;
 				this.b.transfer(i, j, 10);
 				k = (k + 1) % 5000;
 			}
-		} catch(Exception c) { ; }
+		} catch(Exception c) { System.out.println("Coisas!" + c); }
 
 	}	
 }
 
 
+class Checker extends Thread {
+	
+	private Banco b;
+	private int valueC;
 
+	public Checker(Banco b, int value) {
+		this.b = b;
+		this.valueC = value;
+	}
+
+	public void run() {
+	
+		int saldos;
+		int[] a = {1, 2, 3, 4, 5};
+		try {
+			while(true) {
+				saldos = b.totalBalance(a);
+				if(saldos != this.valueC) {
+					System.out.println(saldos);
+				}
+			}
+		} catch (Exception c) { ; }
+	}
+
+}
 
 class Conta {
 	
@@ -89,11 +113,9 @@ class Banco {
 	private final ReentrantLock lock;
 
 	public Banco() {
-
 		ultimaconta = 1;
 		contas = new HashMap<Integer, Conta>(10, 0.8f); 
 		lock = new ReentrantLock();
-	
 	}
 
 	public int createAccount(int initialB) {
@@ -125,12 +147,10 @@ class Banco {
 			if(f == null) {
 				throw new InvalidAcc();
 			}
-			res = f.getSaldo();
+			return f.getSaldo();
 		} finally {
 			lock.unlock();
 		}
-
-		return res;
 
 	}
 
@@ -146,7 +166,7 @@ class Banco {
 			}
 			f.lock.lock();
 		} finally {
-				lock.unlock();
+				this.lock.unlock();
 		}
 		
 		f.deposit(val);
@@ -206,11 +226,6 @@ class Banco {
 			t.lock.unlock();
 		}
 
-		try{
-			f.withdraw(val);
-		} finally {
-			f.lock.unlock();
-		}
 
 	}
 
@@ -256,6 +271,18 @@ class TestaBanco {
 
 	public static void main(String[] args) {
 	
-	
+		Banco b = new Banco();
+		b.createAccount(1000000);
+		b.createAccount(1000000);
+		b.createAccount(1000000);
+		b.createAccount(1000000);
+		b.createAccount(1000000);
+
+		new Transferer(1, b).start();
+		new Transferer(2, b).start();
+		new Transferer(3, b).start();
+		new Transferer(4, b).start();
+
+		new Checker(b, 5000000).start();
 	}
 }
