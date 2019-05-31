@@ -1,5 +1,5 @@
--module(manager).
--export([start/0, create_account/2, close_account/2, loop/1]).
+-module(app).
+-export([start/0, create_account/2, close_account/2, login/2, logout/2, loop/1]).
 
 % interface functions
 
@@ -18,6 +18,18 @@ close_account(L, PW) ->
 		{?MODULE, Res} -> Res
 	end.
 
+login(L, PW) ->
+  ?MODULE ! { self(), { login, L, PW } },
+  receive
+    {?MODULE, Res} -> Res
+  end.
+
+logout(L, PW) ->
+  ?MODULE ! { self(), { logout, L, PW } },
+  receive
+    {?MODULE, Res} -> Res
+  end.
+
 % process
 
 loop(M) ->
@@ -32,19 +44,16 @@ loop(M) ->
 					loop(M)
 			end;	
 		{From, {close, L, P}} ->
-			if 
-				maps:is_key(L, M) ->
+			case maps:find(L, M) of
+        {ok, {P, _}} ->
 					From ! { ?MODULE, ok },
 					loop(maps:remove(L, M));
-				true ->
+				_ ->
 					From ! { ?MODULE, invalid },
 			       	 	loop(M)       
 			end;
 		{From, {login, L, P}} ->
 			case maps:find(L, M) of
-				{ok, {P, true}} ->
-					From ! { ?MODULE, invalid },
-					loop(M);
 				{ok, {P, false}} ->
 					From ! { ?MODULE, ok },
 					loop(maps:update(L, { P, true }, M));
@@ -52,6 +61,13 @@ loop(M) ->
 					From ! { ?MODULE, invalid },
 					loop(M)
 			end;
-	end.
-
-
+		{From, {logout, L, P}} ->
+			case maps:find(L, M) of
+				{ok, {P, true}} ->
+					From ! { ?MODULE, ok },
+					loop(maps:update(L, { P, false }, M));
+				_ -> 
+					From ! { ?MODULE, invalid },
+					loop(M)
+			end
+	end. 
